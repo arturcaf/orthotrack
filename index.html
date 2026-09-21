@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OrthoTrack - Suporte à Decisão em Trauma</title>
+<style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f7f6; color: #333; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1, h2, h3 { color: #005eb8; margin-top: 0; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; color: #555; }
+        select, input[type="text"], input[type="date"], input[type="file"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 15px; margin-bottom: 10px; }
+        .radio-group { margin-bottom: 15px; }
+        .radio-group label { display: inline-block; font-weight: normal; margin-right: 15px; cursor: pointer; }
+        .btn-primary { background-color: #005eb8; color: white; border: none; padding: 14px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; transition: background 0.3s; margin-top: 10px; }
+        .btn-primary:hover { background-color: #00468c; }
+        .alert { padding: 15px; margin: 15px 0; border-radius: 4px; border-left: 5px solid; }
+        .fase1 { background-color: #ffeaea; border-color: #e74c3c; color: #c0392b; }
+        .fase2 { background-color: #fff3e0; border-color: #f39c12; color: #d35400; }
+        .fase3 { background-color: #e8f5e9; border-color: #2ecc71; color: #27ae60; }
+        .rx-preview { max-width: 100%; height: auto; margin-top: 15px; border-radius: 4px; display: none; border: 1px solid #ddd; }
+        .badge { background: #eee; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; margin-right: 5px; color: #555; font-weight: bold;}
+        .seletor-db { background-color: #eaf2f8; border-color: #005eb8; font-weight: bold; color: #005eb8; }
+    </style>
+</head>
+<body onload="selecionarPaciente()">
+<div class="card">
+<h1>OrthoTrack</h1>
+<p style="color: #666; margin-bottom: 25px;">Sistema Determinístico de Acompanhamento de Fraturas</p>
+<label>Consultar Base de Dados:</label>
+<select class="seletor-db" id="seletorPaciente" onchange="selecionarPaciente()">
+<option value="otavio">Processo Clínico: Otávio Fulano de tal (Trauma: 19/09/2026)</option>
+<option value="novo">➕ Iniciar Novo Registo Clínico</option>
+</select>
+<hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;"/>
+<div class="grid-2">
+<div>
+<label>Nome do Paciente (Fictício)</label>
+<input id="nome" placeholder="Ex: João Silva" type="text"/>
+</div>
+<div>
+<label>Data de Nascimento</label>
+<input id="dataNascimento" onchange="calcularIdade()" type="date"/>
+<span id="idadeDisplay" style="font-size: 0.8em; color: #888;"></span>
+</div>
+</div>
+<div class="grid-2">
+<div>
+<label>Data do Trauma</label>
+<input id="dataTrauma" type="date"/>
+</div>
+<div>
+<label>Mecanismo do Trauma</label>
+<select id="mecanismo">
+<option value="Queda de mesma altura">Queda de mesma altura</option>
+<option value="Acidente de trânsito">Acidente de trânsito</option>
+<option value="Trauma desportivo">Trauma desportivo</option>
+<option value="Queda de altura">Queda de altura</option>
+</select>
+</div>
+</div>
+<label>Diagnóstico (Fratura)</label>
+<select id="fratura">
+<option value="radio_distal">Rádio Distal (AO 23)</option>
+<option value="clavicula">Clavícula Diáfise (AO 15-B)</option>
+<option value="umero_proximal">Úmero Proximal (AO 11)</option>
+<option value="umero_diafise">Úmero Diáfise (AO 12) - Haste Intramedular</option>
+<option value="femur_diafise">Fêmur Diáfise (AO 32)</option>
+<option value="tibia_diafise">Tíbia Diáfise (AO 42)</option>
+<option value="tornozelo">Tornozelo / Maléolos (AO 44)</option>
+</select>
+<label>Tratamento Escolhido</label>
+<div class="radio-group">
+<label><input id="radioConservador" name="tratamento" onclick="toggleTratamento()" type="radio" value="conservador"/> Conservador</label>
+<label><input id="radioCirurgico" name="tratamento" onclick="toggleTratamento()" type="radio" value="cirurgico"/> Cirúrgico</label>
+</div>
+<div class="grid-2">
+<div>
+<label id="labelIntervencao">Data da Intervenção</label>
+<input id="dataIntervencao" type="date"/>
+</div>
+<div>
+<label>Data desta Avaliação</label>
+<input id="dataAtendimento" type="date" value="2026-09-20"/>
+</div>
+</div>
+<label>Upload RX</label>
+<input accept="image/*" id="imagemRX" onchange="previewRX(event)" type="file"/>
+<img alt="Pré-visualização do RX" class="rx-preview" id="rxPreview"/>
+<button class="btn-primary" onclick="gerarConduta()">Analisar Fase e Gerar Conduta Clínica</button>
+</div>
+<div class="card" id="resultado" style="display:none;">
+<h2>Registo de Evolução</h2>
+<div style="margin-bottom: 15px;">
+<span class="badge" id="badgePaciente"></span>
+<span class="badge" id="badgeTratamento"></span>
+<span class="badge" id="badgeTempo"></span>
+</div>
+<div id="alertaFase"></div>
+<h3>Diretriz Clínica (Base AO Foundation):</h3>
+<p id="acoesProtocolo" style="line-height: 1.6;"></p>
+</div>
+<script>
+        const dbFraturas = {
+            radio_distal: { nome: "Rádio Distal", fase1: "Foco na dor e edema. Vigilância de parestesia do mediano. Se cirúrgico: penso e remoção de suturas aos 14 dias.", fase2: "Iniciar ganho de ADM passiva/ativa de dedos e punho. Desmame progressivo da imobilização.", fase3: "Liberação para carga leve e fortalecimento se RX mostrar calo incipiente." },
+            clavicula: { nome: "Clavícula Diáfise", fase1: "Foco na integridade da pele. RX para avaliar perda de redução precoce ou falha do implante.", fase2: "Desmame do suspensor. Início de ADM ativa assistida de ombro (limite 90° de elevação).", fase3: "Progressão de fortalecimento. Retorno desportivo após 12 semanas com ponte óssea visível." },
+            umero_proximal: { nome: "Úmero Proximal", fase1: "ATENÇÃO: Alto risco de rigidez. Manter imobilização, mas iniciar exercícios pendulares imediatamente.", fase2: "Progressão de ADM. Manter proteção contra rotação externa excessiva dependendo da fixação.", fase3: "Fase de remodelação. Fisioterapia para ganho de força. Carga dependente de calo radiográfico." },
+            umero_diafise: { nome: "Úmero Diáfise (Haste Intramedular)", fase1: "Avaliação do nervo radial pós-operatório (extensão do punho e dedos). Troca de penso. Manter proteção para conforto.", fase2: "Início de ADM ativa assistida do ombro e cotovelo. Avaliar desmame da suspensão. RX para checar estabilidade dos bloqueios.", fase3: "Avaliar calo ósseo periosteal. Se ausência de consolidação em 12 semanas, risco de pseudartrose atrófica exige reavaliação." },
+            femur_diafise: { nome: "Fêmur Diáfise", fase1: "Cuidados intensivos com risco de TVP/TEV e feridas operatórias.", fase2: "Foco na mobilidade de joelho e anca. Progressão de carga guiada por dor e estabilidade da haste.", fase3: "Avaliar calo radiográfico. Alerta: Se ausência de calo após 12 semanas, ponderar dinamização da haste." },
+            tibia_diafise: { nome: "Tíbia Diáfise", fase1: "Vigilância apertada de partes moles e sinais de síndrome compartimental.", fase2: "ADM de joelho e tornozelo. Liberação de carga parcial conforme estabilidade.", fase3: "Alerta: Atraso de consolidação se não houver ponte óssea em pelo menos 3 corticais após 16 semanas." },
+            tornozelo: { nome: "Tornozelo (Maléolos)", fase1: "Avaliar qualidade da pele e edema. Elevação do membro. Se cirúrgico, avaliar transição para bota ortopédica.", fase2: "Iniciar ADM de flexão plantar e dorsiflexão sem carga. Iniciar desmame de imobilização.", fase3: "Carga total tolerada e início de fisioterapia propriocetiva." }
+        };
+
+        function selecionarPaciente() {
+            const selecao = document.getElementById("seletorPaciente").value;
+            if (selecao === "otavio") {
+                document.getElementById("nome").value = "Otávio Fulano de tal";
+                document.getElementById("dataNascimento").value = "1991-01-01";
+                document.getElementById("dataTrauma").value = "2026-09-19";
+                document.getElementById("mecanismo").value = "Acidente de trânsito";
+                document.getElementById("fratura").value = "umero_diafise";
+                document.getElementById("radioCirurgico").checked = true;
+                toggleTratamento();
+                document.getElementById("dataIntervencao").value = "2026-09-19";
+                document.getElementById("dataAtendimento").value = "2026-09-20";
+                calcularIdade();
+                document.getElementById("resultado").style.display = "none";
+            } else {
+                document.getElementById("nome").value = "";
+                document.getElementById("dataNascimento").value = "";
+                document.getElementById("dataTrauma").value = "";
+                document.getElementById("mecanismo").value = "Queda de mesma altura";
+                document.getElementById("fratura").value = "radio_distal";
+                document.getElementById("radioConservador").checked = true;
+                toggleTratamento();
+                document.getElementById("dataIntervencao").value = "";
+                document.getElementById("dataAtendimento").value = "2026-09-20";
+                document.getElementById("idadeDisplay").innerText = "";
+                document.getElementById("resultado").style.display = "none";
+                document.getElementById("rxPreview").style.display = "none";
+            }
+        }
+
+        function calcularIdade() {
+            const dn = document.getElementById("dataNascimento").value;
+            if (dn) {
+                const hoje = new Date(document.getElementById("dataAtendimento").value || new Date().toISOString().split('T')[0]);
+                const nasc = new Date(dn);
+                let idade = hoje.getFullYear() - nasc.getFullYear();
+                if (hoje.getMonth() < nasc.getMonth() || (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate())) {
+                    idade--;
+                }
+                document.getElementById("idadeDisplay").innerText = `(${idade} anos)`;
+            }
+        }
+
+        function toggleTratamento() {
+            const checked = document.querySelector('input[name="tratamento"]:checked');
+            if (!checked) return;
+            const trat = checked.value;
+            document.getElementById("labelIntervencao").innerText = trat === "cirurgico" ? "Data da Cirurgia" : "Data da Imobilização";
+        }
+
+        function previewRX(event) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const output = document.getElementById('rxPreview');
+                output.src = reader.result;
+                output.style.display = 'block';
+            };
+            if (event.target.files[0]) {
+                reader.readAsDataURL(event.target.files[0]);
+            }
+        }
+
+        function gerarConduta() {
+            const nome = document.getElementById("nome").value || "Paciente";
+            const fratura = document.getElementById("fratura").value;
+            const tratamentoEl = document.querySelector('input[name="tratamento"]:checked');
+            const dataTrauma = document.getElementById("dataTrauma").value;
+            const dataIntervencao = document.getElementById("dataIntervencao").value;
+            const dataAtendimento = document.getElementById("dataAtendimento").value;
+
+            if (!dataTrauma || !dataAtendimento || !tratamentoEl) {
+                alert("Por favor, preencha os campos obrigatórios: Data do Trauma, Tratamento e Data desta Avaliação.");
+                return;
+            }
+
+            const tratamento = tratamentoEl.value;
+            const dataRef = tratamento === "cirurgico" && dataIntervencao ? dataIntervencao : dataTrauma;
+            const diasDecorridos = Math.floor((new Date(dataAtendimento) - new Date(dataRef)) / (1000 * 60 * 60 * 24));
+
+            let fase, classeAlerta, tituloFase;
+            if (diasDecorridos <= 14) {
+                fase = "fase1";
+                classeAlerta = "fase1";
+                tituloFase = `⚠️ FASE 1 — Inflamatória / Pós-Operatória Imediata (Dia ${diasDecorridos})`;
+            } else if (diasDecorridos <= 42) {
+                fase = "fase2";
+                classeAlerta = "fase2";
+                tituloFase = `🔶 FASE 2 — Reparação / Reabilitação Precoce (Dia ${diasDecorridos})`;
+            } else {
+                fase = "fase3";
+                classeAlerta = "fase3";
+                tituloFase = `✅ FASE 3 — Remodelação / Retorno Funcional (Dia ${diasDecorridos})`;
+            }
+
+            const db = dbFraturas[fratura];
+            const mecanismo = document.getElementById("mecanismo").value;
+
+            document.getElementById("badgePaciente").innerText = `👤 ${nome}`;
+            document.getElementById("badgeTratamento").innerText = `🔧 ${tratamento === "cirurgico" ? "Cirúrgico" : "Conservador"} | ${db.nome}`;
+            document.getElementById("badgeTempo").innerText = `📅 ${diasDecorridos} dias | ${mecanismo}`;
+
+            document.getElementById("alertaFase").innerHTML = `<div class="alert ${classeAlerta}"><strong>${tituloFase}</strong></div>`;
+            document.getElementById("acoesProtocolo").innerText = db[fase];
+
+            document.getElementById("resultado").style.display = "block";
+            document.getElementById("resultado").scrollIntoView({ behavior: "smooth" });
+        }
+
+        // Inicializar radio ao carregar
+        document.addEventListener("DOMContentLoaded", function() {
+            const conservador = document.getElementById("radioConservador");
+            if (conservador) conservador.checked = true;
+            toggleTratamento();
+        });
+    </script>
+</body>
+</html>
